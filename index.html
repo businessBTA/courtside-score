@@ -117,6 +117,18 @@
     footer button { height: 50px; }
     .last { margin-top: 4px; }
   }
+  .recbar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .recbtn {
+    height: 48px; padding: 0 20px; border-radius: 24px; border: 2px solid #ff5a5a;
+    background: transparent; color: var(--text); font-family: inherit; font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  }
+  .recbtn .ic { width: 16px; height: 16px; border-radius: 50%; background: #ff5a5a; }
+  .recbtn.on { background: #ff5a5a; color: #fff; }
+  .recbtn.on .ic { border-radius: 3px; background: #fff; }
+  .recbtn:disabled { opacity: 0.5; }
+  .recinfo { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+  .recinfo b { color: var(--text); }
   .event {
     margin-top: 12px; width: 100%; min-height: 40px; border-radius: 12px; border: 1px dashed var(--line);
     background: transparent; color: var(--text); font-family: inherit; font-size: 17px; padding: 4px 12px;
@@ -143,6 +155,11 @@
     </div>
     <div class="status"><span class="dot" id="dot"></span><span id="statusText">กำลังเชื่อมต่อ...</span></div>
   </header>
+
+  <div class="recbar">
+    <button class="recbtn" id="recBtn"><span class="ic"></span><span id="recLabel">เริ่มอัด</span></button>
+    <div class="recinfo" id="recInfo">มือถือยังไม่ได้อัด</div>
+  </div>
 
   <button class="event empty" id="eventName">+ ใส่ชื่อรายการแข่ง</button>
 
@@ -213,7 +230,6 @@
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const $ = (id) => document.getElementById(id);
   const undoStack = []; // สิ่งที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
-  let starCount = 0; // ไฮไลต์ของเกมนี้ (เริ่มนับใหม่เมื่อเริ่มเกมใหม่)
   let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
                 quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
   const SUFFIX = ['', 'ST', 'ND', 'RD', 'TH'];
@@ -234,11 +250,11 @@
       (state.home !== 0 || state.away !== 0 || state.quarter !== 1 ||
        state.home_fouls !== 0 || state.away_fouls !== 0);
     if (wasReset) {
-      starCount = 0;
       undoStack.length = 0;
       $('undo').disabled = true;
     }
     state = row;
+    renderRec();
     $('homeScore').textContent = row.home;
     $('awayScore').textContent = row.away;
     $('homeName').textContent = row.home_name;
@@ -295,13 +311,16 @@
   });
 
   $('star').addEventListener('click', async () => {
+    if (state.rec_state !== 'recording') {
+      $('last').textContent = 'มือถือยังไม่ได้อัด กดเริ่มอัดก่อน แล้วค่อยกดไฮไลต์';
+      return;
+    }
     if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
     const { data, error } = await db.rpc('add_highlight', { p_game: GAME });
     if (error) { setStatus(false, 'ส่งไม่สำเร็จ ลองใหม่'); return; }
-    starCount++;
     undoStack.push({ highlightId: data });
     $('undo').disabled = false;
-    $('last').textContent = `⭐ บันทึกไฮไลต์แล้ว (${starCount} ลูก)`;
+    $('last').textContent = '⭐ บันทึกไฮไลต์แล้ว';
   });
 
   $('undo').addEventListener('click', async () => {
@@ -310,8 +329,7 @@
     if (!last) return;
     if (last.highlightId) {
       await db.rpc('remove_highlight', { p_id: last.highlightId });
-      starCount = Math.max(0, starCount - 1);
-      $('last').textContent = `ยกเลิกไฮไลต์แล้ว (${starCount} ลูก)`;
+      $('last').textContent = 'ยกเลิกไฮไลต์แล้ว';
       return;
     }
     await addPoints(last.isHome, -last.pts, false);
@@ -366,6 +384,43 @@
     const value = prompt('ชื่อรายการแข่ง (เว้นว่างเพื่อไม่แสดง)', state.event_name || '');
     if (value === null) return;
     call('set_event', { p_game: GAME, p_event_name: value });
+  });
+
+  // ---------- ปุ่มอัด (สั่งมือถือจาก iPad) ----------
+  let pendingTimer = null;
+  const fmt = (ms) => {
+    const t = Math.max(0, Math.floor(ms / 1000));
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  };
+  function renderRec() {
+    const st = state.rec_state || 'idle';
+    const btn = $('recBtn');
+    btn.classList.toggle('on', st === 'recording');
+    btn.disabled = st === 'processing';
+    $('recLabel').textContent = st === 'recording' ? 'หยุดอัด' : 'เริ่มอัด';
+    if (st === 'recording') {
+      const since = state.rec_started_at ? Date.now() - new Date(state.rec_started_at).getTime() : 0;
+      $('recInfo').innerHTML = `<span style="color:#ff5a5a">●</span> กำลังอัด <b>${fmt(since)}</b> · ⭐ <b>${state.rec_highlights || 0}</b> ลูก`;
+    } else if (st === 'processing') {
+      $('recInfo').innerHTML = `มือถือกำลังใส่สกอร์และตัดไฮไลต์ <b>${state.rec_progress || 0}%</b>`;
+    } else {
+      $('recInfo').textContent = 'มือถือยังไม่ได้อัด';
+    }
+  }
+  setInterval(() => { if (state.rec_state === 'recording') renderRec(); }, 1000);
+
+  $('recBtn').addEventListener('click', async () => {
+    const action = state.rec_state === 'recording' ? 'stop' : 'start';
+    if (action === 'stop' && !confirm('หยุดอัด?')) return;
+    const before = state.rec_state;
+    await call('request_record', { p_game: GAME, p_action: action });
+    $('recInfo').textContent = action === 'start' ? 'กำลังสั่งมือถือเริ่มอัด...' : 'กำลังสั่งมือถือหยุดอัด...';
+    clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(() => {
+      if (state.rec_state === before) {
+        $('recInfo').textContent = 'มือถือไม่ตอบ ตรวจว่าเปิดแอป Courtside ค้างไว้และขึ้น "ซิงก์"';
+      }
+    }, 6000);
   });
 
   async function load() {
