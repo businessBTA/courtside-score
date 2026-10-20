@@ -136,7 +136,14 @@
   .set-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
   .set-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .set-label { width: 110px; color: var(--muted); font-size: 15px; }
-  .themes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .themes { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .cbtn {
+    width: 52px; height: 44px; border-radius: 10px; border: 3px solid transparent;
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+  }
+  .cbtn.on { border-color: #ffffff; outline: 2px solid #000; }
+  .warn { color: #ffd23f; font-size: 14px; }
   .theme {
     display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px;
     border: 2px solid var(--line); background: transparent; color: var(--text); font-family: inherit; font-size: 14px;
@@ -182,11 +189,15 @@
   <button class="event empty" id="eventName">+ ใส่ชื่อรายการแข่ง</button>
 
   <details class="settings" id="settings">
-    <summary>⚙ ตั้งค่าสกอร์บอร์ด (ธีม · เกณฑ์ฟาวล์ · วันที่)</summary>
+    <summary>⚙ ตั้งค่าสกอร์บอร์ด (สีทีม · เกณฑ์ฟาวล์ · วันที่)</summary>
     <div class="set-body">
       <div class="set-row">
-        <span class="set-label">ธีมสี</span>
-        <div class="themes" id="themes"></div>
+        <span class="set-label">สีทีมเหย้า</span>
+        <div class="themes" id="homeColors"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">สีทีมเยือน</span>
+        <div class="themes" id="awayColors"></div>
       </div>
       <div class="set-row">
         <span class="set-label">เกณฑ์ฟาวล์</span>
@@ -471,34 +482,52 @@
   });
 
   // ---------- ตั้งค่าสกอร์บอร์ด ----------
-  const THEMES = {
-    M1: ['#7c3aed', '#1e40af', 'ม่วง+น้ำเงิน'],
-    M2: ['#6d28d9', '#0f5132', 'ม่วง+เขียวเข้ม'],
-    M3: ['#7c3aed', '#38bdf8', 'ม่วง+ฟ้า'],
-    M4: ['#6d28d9', '#dc2626', 'ม่วง+แดง'],
-    M5: ['#7c3aed', '#1c1c1c', 'ม่วง+ดำ'],
+  const COLORS = {
+    purple: ['#7c3aed', 'ม่วง'],
+    blue: ['#1e40af', 'น้ำเงิน'],
+    sky: ['#38bdf8', 'ฟ้า'],
+    green: ['#0f5132', 'เขียว'],
+    lime: ['#a3e635', 'มะนาว'],
+    red: ['#dc2626', 'แดง'],
+    orange: ['#f97316', 'ส้ม'],
+    yellow: ['#facc15', 'เหลือง'],
+    black: ['#1c1c1c', 'ดำ'],
+    white: ['#f5f5f5', 'ขาว'],
   };
-  for (const [id, [a, b, name]] of Object.entries(THEMES)) {
-    const btn = document.createElement('button');
-    btn.className = 'theme';
-    btn.dataset.theme = id;
-    btn.innerHTML = `<span class="sw" style="background:${a}"></span><span class="sw" style="background:${b}"></span>${id} ${name}`;
-    btn.addEventListener('click', () => saveStyle({ theme: id }));
-    $('themes').appendChild(btn);
-  }
   const ink = (hex) => {
     const n = parseInt(hex.slice(1), 16);
     const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
     return l > 0.6 ? '#0b0d10' : '#ffffff';
   };
+  for (const side of ['home', 'away']) {
+    for (const [id, [hex, name]] of Object.entries(COLORS)) {
+      const btn = document.createElement('button');
+      btn.className = 'cbtn';
+      btn.dataset.side = side;
+      btn.dataset.color = id;
+      btn.style.background = hex;
+      btn.style.color = ink(hex);
+      btn.textContent = name;
+      btn.addEventListener('click', () => {
+        const home = side === 'home' ? id : (state.home_color || 'purple');
+        const away = side === 'away' ? id : (state.away_color || 'blue');
+        call('set_colors', { p_game: GAME, p_home_color: home, p_away_color: away });
+      });
+      $(side + 'Colors').appendChild(btn);
+    }
+  }
   function renderSettings(row) {
-    const [home, away] = THEMES[row.theme] || THEMES.M1;
+    const hc = row.home_color || 'purple';
+    const ac = row.away_color || 'blue';
+    const home = (COLORS[hc] || COLORS.purple)[0];
+    const away = (COLORS[ac] || COLORS.blue)[0];
     const root = document.documentElement.style;
-    root.setProperty('--home', home);
+    root.setProperty('--home', home === '#1c1c1c' ? '#3a3a3a' : home);
     root.setProperty('--away', away === '#1c1c1c' ? '#3a3a3a' : away);
     root.setProperty('--home-ink', ink(home));
     root.setProperty('--away-ink', ink(away));
-    document.querySelectorAll('.theme').forEach((b) => b.classList.toggle('on', b.dataset.theme === (row.theme || 'M1')));
+    document.querySelectorAll('.cbtn').forEach((b) =>
+      b.classList.toggle('on', b.dataset.color === (b.dataset.side === 'home' ? hc : ac)));
     $('limVal').textContent = row.foul_limit || 7;
     if (document.activeElement !== $('dateIn')) $('dateIn').value = row.game_date || '';
     $('tglIntro').classList.toggle('on', row.show_intro !== false);
