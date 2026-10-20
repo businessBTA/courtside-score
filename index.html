@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="กดสกอร์">
+<meta name="theme-color" content="#0b0d10">
+<title>กดสกอร์ Courtside</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #15191f;
+    --line: #262c35;
+    --text: #f2f4f7;
+    --muted: #8a94a3;
+    --home: #ff7a1a;
+    --away: #86a9cc;
+    --ok: #3ccf7a;
+    --bad: #ff5a5a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Kanit', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 14px; color: var(--muted);
+  }
+  .status { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  .board {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 12px 16px; margin: 12px 0;
+  }
+  .team { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .name {
+    font-size: 18px; color: var(--text); background: none; border: 0; font-family: inherit;
+    padding: 2px 8px; border-radius: 8px; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .name:active { background: var(--line); }
+  .bar { width: 40px; height: 4px; border-radius: 2px; }
+  .score { font-size: 64px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .dash { font-size: 40px; color: var(--muted); line-height: 1; }
+  .pads { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 0; }
+  .pad { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
+  .pad button {
+    border: 0; border-radius: 18px; font-family: inherit; font-weight: 700;
+    font-size: clamp(32px, 7vw, 56px); color: #0b0d10; min-height: 64px;
+    transition: transform 80ms ease, filter 80ms ease;
+  }
+  .pad button:active { transform: scale(0.96); filter: brightness(1.15); }
+  .pad.home button { background: var(--home); }
+  .pad.away button { background: var(--away); }
+  footer { display: flex; gap: 12px; margin-top: 12px; }
+  footer button {
+    flex: 1; height: 56px; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-family: inherit; font-size: 18px;
+  }
+  footer button:active { background: var(--line); }
+  footer button:disabled { opacity: 0.4; }
+  footer button.star {
+    flex: 1.6; background: #ffd23f; color: #0b0d10; border: 0; font-weight: 700; font-size: 22px;
+  }
+  footer button.star:active { filter: brightness(1.1); transform: scale(0.98); }
+  .mid { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 12px; }
+  .q { font-size: 20px; font-weight: 600; color: var(--text); background: var(--line); border-radius: 8px; padding: 0 10px; }
+  .fouls { font-size: 15px; color: var(--muted); }
+  .fouls.bonus { color: var(--bad); font-weight: 600; }
+  .controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin-bottom: 12px; align-items: center; }
+  .group { display: flex; gap: 8px; align-items: center; }
+  .group.right { justify-content: flex-end; }
+  .ctl {
+    height: 48px; min-width: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-family: inherit; font-size: 17px;
+  }
+  .ctl:active { background: var(--line); }
+  .flabel { font-size: 16px; color: var(--muted); padding: 0 4px; }
+  .ctl[data-delta] { font-size: 24px; min-width: 56px; }
+  .qlabel { font-size: 18px; min-width: 56px; text-align: center; font-weight: 600; }
+  .toggles { display: flex; gap: 8px; }
+  .chip {
+    height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); font-family: inherit; font-size: 14px;
+  }
+  .chip.on { background: #1f3a2b; border-color: #2c6b47; color: #c9f5da; }
+  .hidden { visibility: hidden; }
+  .event {
+    margin-top: 12px; width: 100%; min-height: 40px; border-radius: 12px; border: 1px dashed var(--line);
+    background: transparent; color: var(--text); font-family: inherit; font-size: 17px; padding: 4px 12px;
+  }
+  .event.empty { color: var(--muted); }
+  .event:not(.empty) { border-style: solid; background: var(--panel); }
+  @media (max-width: 600px) {
+    .controls { grid-template-columns: 1fr 1fr; }
+    .controls .group:nth-child(2) { grid-column: 1 / -1; order: -1; justify-content: center; }
+    .ctl { padding: 0 10px; }
+    footer button { font-size: 15px; white-space: nowrap; }
+    footer button.star { font-size: 19px; }
+  }
+  .last { text-align: center; color: var(--muted); font-size: 14px; min-height: 20px; margin-top: 8px; }
+  .flash { animation: flash 300ms ease; }
+  @keyframes flash { from { transform: scale(1.15); } to { transform: scale(1); } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="toggles">
+      <button class="chip on" id="tglQ">แสดง Q</button>
+      <button class="chip on" id="tglF">แสดงฟาวล์</button>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">กำลังเชื่อมต่อ...</span></div>
+  </header>
+
+  <button class="event empty" id="eventName">+ ใส่ชื่อรายการแข่ง</button>
+
+  <section class="board">
+    <div class="team">
+      <button class="name" id="homeName" data-team="home">ไทเกอร์</button>
+      <div class="bar" style="background: var(--home)"></div>
+      <div class="score" id="homeScore">0</div>
+      <div class="fouls" id="homeFouls">ฟาวล์ 0</div>
+    </div>
+    <div class="mid">
+      <div class="q" id="qBadge">Q1</div>
+      <div class="dash">–</div>
+    </div>
+    <div class="team">
+      <button class="name" id="awayName" data-team="away">ชาร์คส์</button>
+      <div class="bar" style="background: var(--away)"></div>
+      <div class="score" id="awayScore">0</div>
+      <div class="fouls" id="awayFouls">ฟาวล์ 0</div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="group">
+      <button class="ctl" data-foul-home="1" data-delta="-1">−</button>
+      <div class="flabel">ฟาวล์</div>
+      <button class="ctl" data-foul-home="1" data-delta="1">+</button>
+    </div>
+    <div class="group">
+      <button class="ctl" id="qPrev">◀</button>
+      <div class="qlabel" id="qLabel">Q1</div>
+      <button class="ctl" id="qNext">▶</button>
+    </div>
+    <div class="group right">
+      <button class="ctl" data-foul-home="0" data-delta="-1">−</button>
+      <div class="flabel">ฟาวล์</div>
+      <button class="ctl" data-foul-home="0" data-delta="1">+</button>
+    </div>
+  </section>
+
+  <section class="pads">
+    <div class="pad home">
+      <button data-home="1" data-pts="3">+3</button>
+      <button data-home="1" data-pts="2">+2</button>
+      <button data-home="1" data-pts="1">+1</button>
+    </div>
+    <div class="pad away">
+      <button data-home="0" data-pts="3">+3</button>
+      <button data-home="0" data-pts="2">+2</button>
+      <button data-home="0" data-pts="1">+1</button>
+    </div>
+  </section>
+
+  <div class="last" id="last"></div>
+
+  <footer>
+    <button id="undo" disabled>↶ ย้อน</button>
+    <button id="star" class="star">⭐ ไฮไลต์</button>
+    <button id="reset">เริ่มเกมใหม่</button>
+  </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+  const SUPABASE_URL = 'https://pnmjcktnplvaimlhceap.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBubWpja3RucGx2YWltbGhjZWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDEzNTcsImV4cCI6MjEwODAxNzM1N30.3yRigie1ZaCeY0o1r6lYjj4NBV5OiISt5O9FtaKdxw0';
+  const GAME = new URLSearchParams(location.search).get('g') || '1673e5b239';
+
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const undoStack = []; // แต้มที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
+  let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
+                quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
+  const qName = (q) => (q >= 5 ? 'OT' : 'Q' + q);
+
+  function setStatus(ok, text) {
+    $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
+    $('statusText').textContent = text;
+  }
+
+  function render(row) {
+    if (!row) return;
+    const changedHome = row.home !== state.home;
+    const changedAway = row.away !== state.away;
+    state = row;
+    $('homeScore').textContent = row.home;
+    $('awayScore').textContent = row.away;
+    $('homeName').textContent = row.home_name;
+    $('awayName').textContent = row.away_name;
+    const ev = row.event_name || '';
+    $('eventName').textContent = ev || '+ ใส่ชื่อรายการแข่ง';
+    $('eventName').classList.toggle('empty', !ev);
+    $('qBadge').textContent = qName(row.quarter);
+    $('qLabel').textContent = qName(row.quarter);
+    $('qBadge').classList.toggle('hidden', !row.show_quarter);
+    for (const side of ['home', 'away']) {
+      const el = $(side + 'Fouls');
+      const n = row[side + '_fouls'];
+      el.textContent = 'ฟาวล์ ' + n;
+      el.classList.toggle('bonus', n >= 5);
+      el.classList.toggle('hidden', !row.show_fouls);
+    }
+    $('tglQ').classList.toggle('on', row.show_quarter);
+    $('tglF').classList.toggle('on', row.show_fouls);
+    if (changedHome) flash('homeScore');
+    if (changedAway) flash('awayScore');
+  }
+
+  function flash(id) {
+    const el = $(id);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+
+  async function call(fn, args) {
+    const { data, error } = await db.rpc(fn, args);
+    if (error) {
+      setStatus(false, 'ส่งไม่สำเร็จ ลองใหม่');
+      return null;
+    }
+    render(data);
+    return data;
+  }
+
+  async function addPoints(isHome, pts, record = true) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    const row = await call('add_points', { p_game: GAME, p_home: isHome, p_points: pts });
+    if (row && record) {
+      undoStack.push({ isHome, pts });
+      $('undo').disabled = false;
+      const team = isHome ? row.home_name : row.away_name;
+      $('last').textContent = `ล่าสุด: ${team} +${pts}`;
+    }
+  }
+
+  document.querySelectorAll('.pad button').forEach((b) => {
+    b.addEventListener('click', () => addPoints(b.dataset.home === '1', Number(b.dataset.pts)));
+  });
+
+  let starCount = 0;
+  $('star').addEventListener('click', async () => {
+    if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+    const { data, error } = await db.rpc('add_highlight', { p_game: GAME });
+    if (error) { setStatus(false, 'ส่งไม่สำเร็จ ลองใหม่'); return; }
+    starCount++;
+    undoStack.push({ highlightId: data });
+    $('undo').disabled = false;
+    $('last').textContent = `⭐ บันทึกไฮไลต์แล้ว (${starCount} ลูก)`;
+  });
+
+  $('undo').addEventListener('click', async () => {
+    const last = undoStack.pop();
+    $('undo').disabled = undoStack.length === 0;
+    if (!last) return;
+    if (last.highlightId) {
+      await db.rpc('remove_highlight', { p_id: last.highlightId });
+      starCount = Math.max(0, starCount - 1);
+      $('last').textContent = `ยกเลิกไฮไลต์แล้ว (${starCount} ลูก)`;
+      return;
+    }
+    await addPoints(last.isHome, -last.pts, false);
+    const team = last.isHome ? state.home_name : state.away_name;
+    $('last').textContent = `ย้อนแล้ว: ${team} −${last.pts}`;
+  });
+
+  $('reset').addEventListener('click', async () => {
+    if (!confirm('เริ่มเกมใหม่? สกอร์จะกลับเป็น 0 – 0')) return;
+    await call('reset_game', { p_game: GAME });
+    undoStack.length = 0;
+    $('undo').disabled = true;
+    $('last').textContent = 'เริ่มเกมใหม่แล้ว';
+  });
+
+  document.querySelectorAll('.name').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const isHome = b.dataset.team === 'home';
+      const current = isHome ? state.home_name : state.away_name;
+      const value = prompt(isHome ? 'ชื่อทีมเรา' : 'ชื่อทีมคู่แข่ง', current);
+      if (!value || !value.trim()) return;
+      await call('set_names', {
+        p_game: GAME,
+        p_home_name: isHome ? value.trim() : state.home_name,
+        p_away_name: isHome ? state.away_name : value.trim(),
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-foul-home]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (navigator.vibrate) navigator.vibrate(15);
+      call('add_foul', { p_game: GAME, p_home: b.dataset.foulHome === '1', p_delta: Number(b.dataset.delta) });
+    });
+  });
+
+  function changeQuarter(step) {
+    const q = Math.min(5, Math.max(1, state.quarter + step));
+    if (q === state.quarter) return;
+    if (step > 0 && q <= 4 && !confirm(`ไป ${qName(q)}? ฟาวล์ทีมจะเริ่มนับใหม่`)) return;
+    call('set_quarter', { p_game: GAME, p_quarter: q });
+  }
+  $('qPrev').addEventListener('click', () => changeQuarter(-1));
+  $('qNext').addEventListener('click', () => changeQuarter(1));
+
+  $('tglQ').addEventListener('click', () =>
+    call('set_display', { p_game: GAME, p_show_quarter: !state.show_quarter, p_show_fouls: state.show_fouls }));
+  $('tglF').addEventListener('click', () =>
+    call('set_display', { p_game: GAME, p_show_quarter: state.show_quarter, p_show_fouls: !state.show_fouls }));
+
+  $('eventName').addEventListener('click', () => {
+    const value = prompt('ชื่อรายการแข่ง (เว้นว่างเพื่อไม่แสดง)', state.event_name || '');
+    if (value === null) return;
+    call('set_event', { p_game: GAME, p_event_name: value });
+  });
+
+  async function load() {
+    const { data, error } = await db.from('games').select('*').eq('id', GAME).maybeSingle();
+    if (error || !data) {
+      setStatus(false, 'ไม่พบเกม ตรวจลิงก์อีกครั้ง');
+      return;
+    }
+    render(data);
+  }
+
+  db.channel('game-' + GAME)
+    .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME}` },
+        (payload) => render(payload.new))
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setStatus(true, 'เชื่อมต่อแล้ว');
+        load();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setStatus(false, 'หลุดการเชื่อมต่อ กำลังลองใหม่...');
+      }
+    });
+
+  // กลับมาที่หน้านี้หลังสลับแอป ให้ดึงสกอร์ล่าสุด
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') load();
+  });
+  load();
+</script>
+</body>
+</html>
