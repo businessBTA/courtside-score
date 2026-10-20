@@ -212,7 +212,8 @@
 
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   const $ = (id) => document.getElementById(id);
-  const undoStack = []; // แต้มที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
+  const undoStack = []; // สิ่งที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
+  let starCount = 0; // ไฮไลต์ของเกมนี้ (เริ่มนับใหม่เมื่อเริ่มเกมใหม่)
   let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
                 quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
   const SUFFIX = ['', 'ST', 'ND', 'RD', 'TH'];
@@ -228,6 +229,15 @@
     if (!row) return;
     const changedHome = row.home !== state.home;
     const changedAway = row.away !== state.away;
+    const wasReset = row.home === 0 && row.away === 0 && row.quarter === 1 &&
+      row.home_fouls === 0 && row.away_fouls === 0 &&
+      (state.home !== 0 || state.away !== 0 || state.quarter !== 1 ||
+       state.home_fouls !== 0 || state.away_fouls !== 0);
+    if (wasReset) {
+      starCount = 0;
+      undoStack.length = 0;
+      $('undo').disabled = true;
+    }
     state = row;
     $('homeScore').textContent = row.home;
     $('awayScore').textContent = row.away;
@@ -284,7 +294,6 @@
     b.addEventListener('click', () => addPoints(b.dataset.home === '1', Number(b.dataset.pts)));
   });
 
-  let starCount = 0;
   $('star').addEventListener('click', async () => {
     if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
     const { data, error } = await db.rpc('add_highlight', { p_game: GAME });
