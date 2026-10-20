@@ -233,8 +233,10 @@
   let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
                 quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
   const SUFFIX = ['', 'ST', 'ND', 'RD', 'TH'];
-  const qName = (q) => (q >= 5 ? 'OT' : q + SUFFIX[q]);
-  const qHtml = (q) => (q >= 5 ? 'OT' : `${q}<sup>${SUFFIX[q]}</sup>`);
+  // 1-4 = ควอเตอร์, 5 = OT, 6 = HT (พักครึ่ง)
+  const Q_ORDER = [1, 2, 6, 3, 4, 5];
+  const qName = (q) => (q === 5 ? 'OT' : q === 6 ? 'HT' : q + SUFFIX[q]);
+  const qHtml = (q) => (q === 5 ? 'OT' : q === 6 ? 'HT' : `${q}<sup>${SUFFIX[q]}</sup>`);
 
   function setStatus(ok, text) {
     $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
@@ -367,7 +369,8 @@
   });
 
   function changeQuarter(step) {
-    const q = Math.min(5, Math.max(1, state.quarter + step));
+    const i = Q_ORDER.indexOf(state.quarter);
+    const q = Q_ORDER[Math.min(Q_ORDER.length - 1, Math.max(0, (i < 0 ? 0 : i) + step))];
     if (q === state.quarter) return;
     if (step > 0 && q <= 4 && !confirm(`ไปควอเตอร์ ${qName(q)}? ฟาวล์ทีมจะเริ่มนับใหม่`)) return;
     call('set_quarter', { p_game: GAME, p_quarter: q });
