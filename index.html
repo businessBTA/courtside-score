@@ -69,8 +69,8 @@
     transition: transform 80ms ease, filter 80ms ease;
   }
   .pad button:active { transform: scale(0.96); filter: brightness(1.15); }
-  .pad.home button { background: var(--home); }
-  .pad.away button { background: var(--away); }
+  .pad.home button { background: var(--home); color: var(--home-ink, #0b0d10); }
+  .pad.away button { background: var(--away); color: var(--away-ink, #0b0d10); }
   footer { display: flex; gap: 12px; margin-top: 12px; }
   footer button {
     flex: 1; height: 56px; border-radius: 14px; border: 1px solid var(--line);
@@ -129,6 +129,24 @@
   .recbtn:disabled { opacity: 0.5; }
   .recinfo { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
   .recinfo b { color: var(--text); }
+  .settings { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .settings summary { cursor: pointer; padding: 8px 14px; font-size: 15px; color: var(--muted); list-style: none; }
+  .settings summary::-webkit-details-marker { display: none; }
+  .settings[open] summary { color: var(--text); border-bottom: 1px solid var(--line); }
+  .set-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .set-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .set-label { width: 110px; color: var(--muted); font-size: 15px; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .theme {
+    display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px;
+    border: 2px solid var(--line); background: transparent; color: var(--text); font-family: inherit; font-size: 14px;
+  }
+  .theme.on { border-color: #ffffff; background: var(--line); }
+  .sw { width: 14px; height: 22px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
+  .date-in {
+    height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 16px; padding: 0 12px; min-width: 200px;
+  }
   .event {
     margin-top: 12px; width: 100%; min-height: 40px; border-radius: 12px; border: 1px dashed var(--line);
     background: transparent; color: var(--text); font-family: inherit; font-size: 17px; padding: 4px 12px;
@@ -162,6 +180,31 @@
   </div>
 
   <button class="event empty" id="eventName">+ ใส่ชื่อรายการแข่ง</button>
+
+  <details class="settings" id="settings">
+    <summary>⚙ ตั้งค่าสกอร์บอร์ด (ธีม · เกณฑ์ฟาวล์ · วันที่)</summary>
+    <div class="set-body">
+      <div class="set-row">
+        <span class="set-label">ธีมสี</span>
+        <div class="themes" id="themes"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">เกณฑ์ฟาวล์</span>
+        <button class="ctl" id="limMinus" aria-label="ลดเกณฑ์ฟาวล์">−</button>
+        <span class="qlabel" id="limVal">7</span>
+        <button class="ctl" id="limPlus" aria-label="เพิ่มเกณฑ์ฟาวล์">+</button>
+        <span style="color: var(--muted); font-size: 14px">ฟาวล์ถึงเลขนี้ ตัวเลขจะเป็นสีแดง</span>
+      </div>
+      <div class="set-row">
+        <label class="set-label" for="dateIn">วันที่แข่ง</label>
+        <input class="date-in" id="dateIn" placeholder="เว้นว่าง = ใช้วันที่วันนี้">
+      </div>
+      <div class="set-row">
+        <span class="set-label">กราฟิกเปิดเกม</span>
+        <button class="chip on" id="tglIntro">แสดงตอนต้นคลิป</button>
+      </div>
+    </div>
+  </details>
 
   <section class="board">
     <div class="team">
@@ -264,6 +307,7 @@
     const ev = row.event_name || '';
     $('eventName').textContent = ev || '+ ใส่ชื่อรายการแข่ง';
     $('eventName').classList.toggle('empty', !ev);
+    renderSettings(row);
     $('qBadge').innerHTML = qHtml(row.quarter);
     $('qLabel').innerHTML = qHtml(row.quarter);
     $('qBadge').classList.toggle('hidden', !row.show_quarter);
@@ -271,7 +315,7 @@
       const el = $(side + 'Fouls');
       const n = row[side + '_fouls'];
       el.textContent = 'ฟาวล์ ' + n;
-      el.classList.toggle('bonus', n >= 5);
+      el.classList.toggle('bonus', n >= (row.foul_limit || 7));
       el.classList.toggle('hidden', !row.show_fouls);
     }
     $('tglQ').classList.toggle('on', row.show_quarter);
@@ -425,6 +469,57 @@
       }
     }, 6000);
   });
+
+  // ---------- ตั้งค่าสกอร์บอร์ด ----------
+  const THEMES = {
+    M1: ['#7c3aed', '#1e40af', 'ม่วง+น้ำเงิน'],
+    M2: ['#6d28d9', '#0f5132', 'ม่วง+เขียวเข้ม'],
+    M3: ['#7c3aed', '#38bdf8', 'ม่วง+ฟ้า'],
+    M4: ['#6d28d9', '#dc2626', 'ม่วง+แดง'],
+    M5: ['#7c3aed', '#1c1c1c', 'ม่วง+ดำ'],
+  };
+  for (const [id, [a, b, name]] of Object.entries(THEMES)) {
+    const btn = document.createElement('button');
+    btn.className = 'theme';
+    btn.dataset.theme = id;
+    btn.innerHTML = `<span class="sw" style="background:${a}"></span><span class="sw" style="background:${b}"></span>${id} ${name}`;
+    btn.addEventListener('click', () => saveStyle({ theme: id }));
+    $('themes').appendChild(btn);
+  }
+  const ink = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return l > 0.6 ? '#0b0d10' : '#ffffff';
+  };
+  function renderSettings(row) {
+    const [home, away] = THEMES[row.theme] || THEMES.M1;
+    const root = document.documentElement.style;
+    root.setProperty('--home', home);
+    root.setProperty('--away', away === '#1c1c1c' ? '#3a3a3a' : away);
+    root.setProperty('--home-ink', ink(home));
+    root.setProperty('--away-ink', ink(away));
+    document.querySelectorAll('.theme').forEach((b) => b.classList.toggle('on', b.dataset.theme === (row.theme || 'M1')));
+    $('limVal').textContent = row.foul_limit || 7;
+    if (document.activeElement !== $('dateIn')) $('dateIn').value = row.game_date || '';
+    $('tglIntro').classList.toggle('on', row.show_intro !== false);
+  }
+  function saveStyle(patch) {
+    const cur = {
+      theme: state.theme || 'M1',
+      foul_limit: state.foul_limit || 7,
+      game_date: state.game_date || '',
+      show_intro: state.show_intro !== false,
+      ...patch,
+    };
+    call('set_style', {
+      p_game: GAME, p_theme: cur.theme, p_foul_limit: cur.foul_limit,
+      p_game_date: cur.game_date, p_show_intro: cur.show_intro,
+    });
+  }
+  $('limMinus').addEventListener('click', () => saveStyle({ foul_limit: Math.max(1, (state.foul_limit || 7) - 1) }));
+  $('limPlus').addEventListener('click', () => saveStyle({ foul_limit: Math.min(15, (state.foul_limit || 7) + 1) }));
+  $('dateIn').addEventListener('change', () => saveStyle({ game_date: $('dateIn').value.trim() }));
+  $('tglIntro').addEventListener('click', () => saveStyle({ show_intro: state.show_intro === false }));
 
   async function load() {
     const { data, error } = await db.from('games').select('*').eq('id', GAME).maybeSingle();
