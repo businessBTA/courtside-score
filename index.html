@@ -24,7 +24,8 @@
     --bad: #ff5a5a;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; min-height: 100dvh; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -64,7 +65,7 @@
   .pad { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
   .pad button {
     border: 0; border-radius: 18px; font-family: inherit; font-weight: 700;
-    font-size: clamp(32px, 7vw, 56px); color: #0b0d10; min-height: 64px;
+    font-size: clamp(30px, 6vw, 52px); color: #0b0d10; min-height: 56px;
     transition: transform 80ms ease, filter 80ms ease;
   }
   .pad button:active { transform: scale(0.96); filter: brightness(1.15); }
@@ -103,6 +104,19 @@
   }
   .chip.on { background: #1f3a2b; border-color: #2c6b47; color: #c9f5da; }
   .hidden { visibility: hidden; }
+  .q sup, .qlabel sup { font-size: 0.55em; vertical-align: 0.6em; line-height: 0; margin-left: 1px; }
+  @media (max-height: 1000px) {
+    .event { margin-top: 8px; min-height: 34px; font-size: 15px; }
+    .board { margin: 8px 0; padding: 6px 12px; }
+    .score { font-size: 46px; }
+    .name { font-size: 16px; }
+    .controls { margin-bottom: 8px; }
+    .ctl { height: 42px; }
+    .pads, .pad { gap: 10px; }
+    footer { margin-top: 8px; }
+    footer button { height: 50px; }
+    .last { margin-top: 4px; }
+  }
   .event {
     margin-top: 12px; width: 100%; min-height: 40px; border-radius: 12px; border: 1px dashed var(--line);
     background: transparent; color: var(--text); font-family: inherit; font-size: 17px; padding: 4px 12px;
@@ -124,7 +138,7 @@
 <body>
   <header>
     <div class="toggles">
-      <button class="chip on" id="tglQ">แสดง Q</button>
+      <button class="chip on" id="tglQ">แสดงควอเตอร์</button>
       <button class="chip on" id="tglF">แสดงฟาวล์</button>
     </div>
     <div class="status"><span class="dot" id="dot"></span><span id="statusText">กำลังเชื่อมต่อ...</span></div>
@@ -140,7 +154,7 @@
       <div class="fouls" id="homeFouls">ฟาวล์ 0</div>
     </div>
     <div class="mid">
-      <div class="q" id="qBadge">Q1</div>
+      <div class="q" id="qBadge">1<sup>ST</sup></div>
       <div class="dash">–</div>
     </div>
     <div class="team">
@@ -159,7 +173,7 @@
     </div>
     <div class="group">
       <button class="ctl" id="qPrev">◀</button>
-      <div class="qlabel" id="qLabel">Q1</div>
+      <div class="qlabel" id="qLabel">1<sup>ST</sup></div>
       <button class="ctl" id="qNext">▶</button>
     </div>
     <div class="group right">
@@ -201,7 +215,9 @@
   const undoStack = []; // แต้มที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
   let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
                 quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
-  const qName = (q) => (q >= 5 ? 'OT' : 'Q' + q);
+  const SUFFIX = ['', 'ST', 'ND', 'RD', 'TH'];
+  const qName = (q) => (q >= 5 ? 'OT' : q + SUFFIX[q]);
+  const qHtml = (q) => (q >= 5 ? 'OT' : `${q}<sup>${SUFFIX[q]}</sup>`);
 
   function setStatus(ok, text) {
     $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
@@ -220,8 +236,8 @@
     const ev = row.event_name || '';
     $('eventName').textContent = ev || '+ ใส่ชื่อรายการแข่ง';
     $('eventName').classList.toggle('empty', !ev);
-    $('qBadge').textContent = qName(row.quarter);
-    $('qLabel').textContent = qName(row.quarter);
+    $('qBadge').innerHTML = qHtml(row.quarter);
+    $('qLabel').innerHTML = qHtml(row.quarter);
     $('qBadge').classList.toggle('hidden', !row.show_quarter);
     for (const side of ['home', 'away']) {
       const el = $(side + 'Fouls');
@@ -326,7 +342,7 @@
   function changeQuarter(step) {
     const q = Math.min(5, Math.max(1, state.quarter + step));
     if (q === state.quarter) return;
-    if (step > 0 && q <= 4 && !confirm(`ไป ${qName(q)}? ฟาวล์ทีมจะเริ่มนับใหม่`)) return;
+    if (step > 0 && q <= 4 && !confirm(`ไปควอเตอร์ ${qName(q)}? ฟาวล์ทีมจะเริ่มนับใหม่`)) return;
     call('set_quarter', { p_game: GAME, p_quarter: q });
   }
   $('qPrev').addEventListener('click', () => changeQuarter(-1));
