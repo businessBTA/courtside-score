@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Courtside">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<meta name="theme-color" content="#0b0d10">
+<title>Courtside</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #15191f;
+    --line: #262c35;
+    --text: #f2f4f7;
+    --muted: #8a94a3;
+    --home: #ff7a1a;
+    --away: #86a9cc;
+    --ok: #3ccf7a;
+    --bad: #ff5a5a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; min-height: 100dvh; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Kanit', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 14px; color: var(--muted);
+  }
+  .status { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  .board {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 12px 16px; margin: 12px 0;
+  }
+  .team { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .name {
+    font-size: 18px; color: var(--text); background: none; border: 0; font-family: inherit;
+    padding: 2px 8px; border-radius: 8px; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .name:active { background: var(--line); }
+  .bar { width: 40px; height: 4px; border-radius: 2px; }
+  .score { font-size: 64px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .dash { font-size: 40px; color: var(--muted); line-height: 1; }
+  .pads { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 0; }
+  .pad { display: grid; grid-template-rows: repeat(3, 1fr); gap: 12px; }
+  .pad button {
+    border: 0; border-radius: 18px; font-family: inherit; font-weight: 700;
+    font-size: clamp(30px, 6vw, 52px); color: #0b0d10; min-height: 56px;
+    transition: transform 80ms ease, filter 80ms ease;
+  }
+  .pad button:active { transform: scale(0.96); filter: brightness(1.15); }
+  .pad.home button { background: var(--home); color: var(--home-ink, #0b0d10); }
+  .pad.away button { background: var(--away); color: var(--away-ink, #0b0d10); }
+  footer { display: flex; gap: 12px; margin-top: 12px; }
+  footer button {
+    flex: 1; height: 56px; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-family: inherit; font-size: 18px;
+  }
+  footer button:active { background: var(--line); }
+  footer button:disabled { opacity: 0.4; }
+  footer button.star {
+    flex: 1.6; background: #ffd23f; color: #0b0d10; border: 0; font-weight: 700; font-size: 22px;
+  }
+  footer button.star:active { filter: brightness(1.1); transform: scale(0.98); }
+  .mid { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 12px; }
+  .q { font-size: 20px; font-weight: 600; color: var(--text); background: var(--line); border-radius: 8px; padding: 0 10px; }
+  .fouls { font-size: 15px; color: var(--muted); }
+  .fouls.bonus { color: var(--bad); font-weight: 600; }
+  .controls { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; margin-bottom: 12px; align-items: center; }
+  .group { display: flex; gap: 8px; align-items: center; }
+  .group.right { justify-content: flex-end; }
+  .ctl {
+    height: 48px; min-width: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font-family: inherit; font-size: 17px;
+  }
+  .ctl:active { background: var(--line); }
+  .flabel { font-size: 16px; color: var(--muted); padding: 0 4px; }
+  .ctl[data-delta] { font-size: 24px; min-width: 56px; }
+  .qlabel { font-size: 18px; min-width: 56px; text-align: center; font-weight: 600; }
+  .toggles { display: flex; gap: 8px; }
+  .chip {
+    height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); font-family: inherit; font-size: 14px;
+  }
+  .chip.on { background: #1f3a2b; border-color: #2c6b47; color: #c9f5da; }
+  .hidden { visibility: hidden; }
+  .q sup, .qlabel sup { font-size: 0.55em; vertical-align: 0.6em; line-height: 0; margin-left: 1px; }
+  @media (max-height: 1000px) {
+    .event { margin-top: 8px; min-height: 34px; font-size: 15px; }
+    .board { margin: 8px 0; padding: 6px 12px; }
+    .score { font-size: 46px; }
+    .name { font-size: 16px; }
+    .controls { margin-bottom: 8px; }
+    .ctl { height: 42px; }
+    .pads, .pad { gap: 10px; }
+    footer { margin-top: 8px; }
+    footer button { height: 50px; }
+    .last { margin-top: 4px; }
+  }
+  .recbar { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .recbtn {
+    height: 48px; padding: 0 20px; border-radius: 24px; border: 2px solid #ff5a5a;
+    background: transparent; color: var(--text); font-family: inherit; font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px; white-space: nowrap;
+  }
+  .recbtn .ic { width: 16px; height: 16px; border-radius: 50%; background: #ff5a5a; }
+  .recbtn.on { background: #ff5a5a; color: #fff; }
+  .recbtn.on .ic { border-radius: 3px; background: #fff; }
+  .recbtn:disabled { opacity: 0.5; }
+  .recinfo { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+  .recinfo b { color: var(--text); }
+  .settings { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+  .settings summary { cursor: pointer; padding: 8px 14px; font-size: 15px; color: var(--muted); list-style: none; }
+  .settings summary::-webkit-details-marker { display: none; }
+  .settings[open] summary { color: var(--text); border-bottom: 1px solid var(--line); }
+  .set-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .set-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .set-label { width: 110px; color: var(--muted); font-size: 15px; }
+  .themes { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .cbtn {
+    width: 52px; height: 44px; border-radius: 10px; border: 3px solid transparent;
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+  }
+  .cbtn.on { border-color: #ffffff; outline: 2px solid #000; }
+  .warn { color: #ffd23f; font-size: 14px; }
+  .theme {
+    display: flex; align-items: center; gap: 6px; height: 44px; padding: 0 12px; border-radius: 10px;
+    border: 2px solid var(--line); background: transparent; color: var(--text); font-family: inherit; font-size: 14px;
+  }
+  .theme.on { border-color: #ffffff; background: var(--line); }
+  .sw { width: 14px; height: 22px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35); }
+  .date-in {
+    height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 16px; padding: 0 12px; min-width: 200px;
+  }
+  .event {
+    margin-top: 12px; width: 100%; min-height: 40px; border-radius: 12px; border: 1px dashed var(--line);
+    background: transparent; color: var(--text); font-family: inherit; font-size: 17px; padding: 4px 12px;
+  }
+  .event.empty { color: var(--muted); }
+  .event:not(.empty) { border-style: solid; background: var(--panel); }
+  @media (max-width: 600px) {
+    .controls { grid-template-columns: 1fr 1fr; }
+    .controls .group:nth-child(2) { grid-column: 1 / -1; order: -1; justify-content: center; }
+    .ctl { padding: 0 10px; }
+    footer button { font-size: 15px; white-space: nowrap; }
+    footer button.star { font-size: 19px; }
+  }
+  .last { text-align: center; color: var(--muted); font-size: 14px; min-height: 20px; margin-top: 8px; }
+  .flash { animation: flash 300ms ease; }
+  @keyframes flash { from { transform: scale(1.15); } to { transform: scale(1); } }
+</style>
+</head>
+<body>
+  <header>
+    <div class="toggles">
+      <button class="chip on" id="tglQ">แสดงควอเตอร์</button>
+      <button class="chip on" id="tglF">แสดงฟาวล์</button>
+    </div>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">กำลังเชื่อมต่อ...</span></div>
+  </header>
+
+  <div class="recbar">
+    <button class="recbtn" id="recBtn"><span class="ic"></span><span id="recLabel">เริ่มอัด</span></button>
+    <div class="recinfo" id="recInfo">มือถือยังไม่ได้อัด</div>
+  </div>
+
+  <button class="event empty" id="eventName">+ ใส่ชื่อรายการแข่ง</button>
+
+  <details class="settings" id="settings">
+    <summary>⚙ ตั้งค่าสกอร์บอร์ด (สีทีม · เกณฑ์ฟาวล์ · วันที่)</summary>
+    <div class="set-body">
+      <div class="set-row">
+        <span class="set-label">สีทีมเหย้า</span>
+        <div class="themes" id="homeColors"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">สีทีมเยือน</span>
+        <div class="themes" id="awayColors"></div>
+      </div>
+      <div class="set-row">
+        <span class="set-label">เกณฑ์ฟาวล์</span>
+        <button class="ctl" id="limMinus" aria-label="ลดเกณฑ์ฟาวล์">−</button>
+        <span class="qlabel" id="limVal">7</span>
+        <button class="ctl" id="limPlus" aria-label="เพิ่มเกณฑ์ฟาวล์">+</button>
+        <span style="color: var(--muted); font-size: 14px">ฟาวล์ถึงเลขนี้ ตัวเลขจะเป็นสีแดง</span>
+      </div>
+      <div class="set-row">
+        <label class="set-label" for="dateIn">วันที่แข่ง</label>
+        <input class="date-in" id="dateIn" placeholder="เว้นว่าง = ใช้วันที่วันนี้">
+      </div>
+      <div class="set-row">
+        <span class="set-label">กราฟิกเปิดเกม</span>
+        <button class="chip on" id="tglIntro">แสดงตอนต้นคลิป</button>
+      </div>
+    </div>
+  </details>
+
+  <section class="board">
+    <div class="team">
+      <button class="name" id="homeName" data-team="home">ไทเกอร์</button>
+      <div class="bar" style="background: var(--home)"></div>
+      <div class="score" id="homeScore">0</div>
+      <div class="fouls" id="homeFouls">ฟาวล์ 0</div>
+    </div>
+    <div class="mid">
+      <div class="q" id="qBadge">1<sup>ST</sup></div>
+      <div class="dash">–</div>
+    </div>
+    <div class="team">
+      <button class="name" id="awayName" data-team="away">ชาร์คส์</button>
+      <div class="bar" style="background: var(--away)"></div>
+      <div class="score" id="awayScore">0</div>
+      <div class="fouls" id="awayFouls">ฟาวล์ 0</div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="group">
+      <button class="ctl" data-foul-home="1" data-delta="-1">−</button>
+      <div class="flabel">ฟาวล์</div>
+      <button class="ctl" data-foul-home="1" data-delta="1">+</button>
+    </div>
+    <div class="group">
+      <button class="ctl" id="qPrev">◀</button>
+      <div class="qlabel" id="qLabel">1<sup>ST</sup></div>
+      <button class="ctl" id="qNext">▶</button>
+    </div>
+    <div class="group right">
+      <button class="ctl" data-foul-home="0" data-delta="-1">−</button>
+      <div class="flabel">ฟาวล์</div>
+      <button class="ctl" data-foul-home="0" data-delta="1">+</button>
+    </div>
+  </section>
+
+  <section class="pads">
+    <div class="pad home">
+      <button data-home="1" data-pts="3">+3</button>
+      <button data-home="1" data-pts="2">+2</button>
+      <button data-home="1" data-pts="1">+1</button>
+    </div>
+    <div class="pad away">
+      <button data-home="0" data-pts="3">+3</button>
+      <button data-home="0" data-pts="2">+2</button>
+      <button data-home="0" data-pts="1">+1</button>
+    </div>
+  </section>
+
+  <div class="last" id="last"></div>
+
+  <footer>
+    <button id="undo" disabled>↶ ย้อน</button>
+    <button id="star" class="star">⭐ ไฮไลต์</button>
+    <button id="reset">เริ่มเกมใหม่</button>
+  </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+  const SUPABASE_URL = 'https://pnmjcktnplvaimlhceap.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBubWpja3RucGx2YWltbGhjZWFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDEzNTcsImV4cCI6MjEwODAxNzM1N30.3yRigie1ZaCeY0o1r6lYjj4NBV5OiISt5O9FtaKdxw0';
+  const GAME = new URLSearchParams(location.search).get('g') || '1673e5b239';
+
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const $ = (id) => document.getElementById(id);
+  const undoStack = []; // สิ่งที่เครื่องนี้กด (ย้อนได้เฉพาะของเครื่องนี้)
+  let state = { home: 0, away: 0, home_name: 'ไทเกอร์', away_name: 'ชาร์คส์',
+                quarter: 1, event_name: '', home_fouls: 0, away_fouls: 0, show_quarter: true, show_fouls: true };
+  const SUFFIX = ['', 'ST', 'ND', 'RD', 'TH'];
+  // 1-4 = ควอเตอร์, 5 = OT, 6 = HT (พักครึ่ง)
+  const Q_ORDER = [1, 2, 6, 3, 4, 5];
+  const qName = (q) => (q === 5 ? 'OT' : q === 6 ? 'HT' : q + SUFFIX[q]);
+  const qHtml = (q) => (q === 5 ? 'OT' : q === 6 ? 'HT' : `${q}<sup>${SUFFIX[q]}</sup>`);
+
+  function setStatus(ok, text) {
+    $('dot').className = 'dot ' + (ok ? 'ok' : 'bad');
+    $('statusText').textContent = text;
+  }
+
+  function render(row) {
+    if (!row) return;
+    const changedHome = row.home !== state.home;
+    const changedAway = row.away !== state.away;
+    const wasReset = row.home === 0 && row.away === 0 && row.quarter === 1 &&
+      row.home_fouls === 0 && row.away_fouls === 0 &&
+      (state.home !== 0 || state.away !== 0 || state.quarter !== 1 ||
+       state.home_fouls !== 0 || state.away_fouls !== 0);
+    if (wasReset) {
+      undoStack.length = 0;
+      $('undo').disabled = true;
+    }
+    state = row;
+    renderRec();
+    $('homeScore').textContent = row.home;
+    $('awayScore').textContent = row.away;
+    $('homeName').textContent = row.home_name;
+    $('awayName').textContent = row.away_name;
+    const ev = row.event_name || '';
+    $('eventName').textContent = ev || '+ ใส่ชื่อรายการแข่ง';
+    $('eventName').classList.toggle('empty', !ev);
+    renderSettings(row);
+    $('qBadge').innerHTML = qHtml(row.quarter);
+    $('qLabel').innerHTML = qHtml(row.quarter);
+    $('qBadge').classList.toggle('hidden', !row.show_quarter);
+    for (const side of ['home', 'away']) {
+      const el = $(side + 'Fouls');
+      const n = row[side + '_fouls'];
+      el.textContent = 'ฟาวล์ ' + n;
+      el.classList.toggle('bonus', n >= (row.foul_limit || 7));
+      el.classList.toggle('hidden', !row.show_fouls);
+    }
+    $('tglQ').classList.toggle('on', row.show_quarter);
+    $('tglF').classList.toggle('on', row.show_fouls);
+    if (changedHome) flash('homeScore');
+    if (changedAway) flash('awayScore');
+  }
+
+  function flash(id) {
+    const el = $(id);
+    el.classList.remove('flash');
+    void el.offsetWidth;
+    el.classList.add('flash');
+  }
+
+  async function call(fn, args) {
+    const { data, error } = await db.rpc(fn, args);
+    if (error) {
+      setStatus(false, 'ส่งไม่สำเร็จ ลองใหม่');
+      return null;
+    }
+    render(data);
+    return data;
+  }
+
+  async function addPoints(isHome, pts, record = true) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    const row = await call('add_points', { p_game: GAME, p_home: isHome, p_points: pts });
+    if (row && record) {
+      undoStack.push({ isHome, pts });
+      $('undo').disabled = false;
+      const team = isHome ? row.home_name : row.away_name;
+      $('last').textContent = `ล่าสุด: ${team} +${pts}`;
+    }
+  }
+
+  document.querySelectorAll('.pad button').forEach((b) => {
+    b.addEventListener('click', () => addPoints(b.dataset.home === '1', Number(b.dataset.pts)));
+  });
+
+  $('star').addEventListener('click', async () => {
+    if (state.rec_state !== 'recording') {
+      $('last').textContent = 'มือถือยังไม่ได้อัด กดเริ่มอัดก่อน แล้วค่อยกดไฮไลต์';
+      return;
+    }
+    if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
+    const { data, error } = await db.rpc('add_highlight', { p_game: GAME });
+    if (error) { setStatus(false, 'ส่งไม่สำเร็จ ลองใหม่'); return; }
+    undoStack.push({ highlightId: data });
+    $('undo').disabled = false;
+    $('last').textContent = '⭐ บันทึกไฮไลต์แล้ว';
+  });
+
+  $('undo').addEventListener('click', async () => {
+    const last = undoStack.pop();
+    $('undo').disabled = undoStack.length === 0;
+    if (!last) return;
+    if (last.highlightId) {
+      await db.rpc('remove_highlight', { p_id: last.highlightId });
+      $('last').textContent = 'ยกเลิกไฮไลต์แล้ว';
+      return;
+    }
+    await addPoints(last.isHome, -last.pts, false);
+    const team = last.isHome ? state.home_name : state.away_name;
+    $('last').textContent = `ย้อนแล้ว: ${team} −${last.pts}`;
+  });
+
+  $('reset').addEventListener('click', async () => {
+    if (!confirm('เริ่มเกมใหม่? สกอร์จะกลับเป็น 0 – 0')) return;
+    await call('reset_game', { p_game: GAME });
+    undoStack.length = 0;
+    $('undo').disabled = true;
+    $('last').textContent = 'เริ่มเกมใหม่แล้ว';
+  });
+
+  document.querySelectorAll('.name').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const isHome = b.dataset.team === 'home';
+      const current = isHome ? state.home_name : state.away_name;
+      const value = prompt(isHome ? 'ชื่อทีมเรา' : 'ชื่อทีมคู่แข่ง', current);
+      if (!value || !value.trim()) return;
+      await call('set_names', {
+        p_game: GAME,
+        p_home_name: isHome ? value.trim() : state.home_name,
+        p_away_name: isHome ? state.away_name : value.trim(),
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-foul-home]').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (navigator.vibrate) navigator.vibrate(15);
+      call('add_foul', { p_game: GAME, p_home: b.dataset.foulHome === '1', p_delta: Number(b.dataset.delta) });
+    });
+  });
+
+  function changeQuarter(step) {
+    const i = Q_ORDER.indexOf(state.quarter);
+    const q = Q_ORDER[Math.min(Q_ORDER.length - 1, Math.max(0, (i < 0 ? 0 : i) + step))];
+    if (q === state.quarter) return;
+    if (step > 0 && q <= 4 && !confirm(`ไปควอเตอร์ ${qName(q)}? ฟาวล์ทีมจะเริ่มนับใหม่`)) return;
+    call('set_quarter', { p_game: GAME, p_quarter: q });
+  }
+  $('qPrev').addEventListener('click', () => changeQuarter(-1));
+  $('qNext').addEventListener('click', () => changeQuarter(1));
+
+  $('tglQ').addEventListener('click', () =>
+    call('set_display', { p_game: GAME, p_show_quarter: !state.show_quarter, p_show_fouls: state.show_fouls }));
+  $('tglF').addEventListener('click', () =>
+    call('set_display', { p_game: GAME, p_show_quarter: state.show_quarter, p_show_fouls: !state.show_fouls }));
+
+  $('eventName').addEventListener('click', () => {
+    const value = prompt('ชื่อรายการแข่ง (เว้นว่างเพื่อไม่แสดง)', state.event_name || '');
+    if (value === null) return;
+    call('set_event', { p_game: GAME, p_event_name: value });
+  });
+
+  // ---------- ปุ่มอัด (สั่งมือถือจาก iPad) ----------
+  let pendingTimer = null;
+  const fmt = (ms) => {
+    const t = Math.max(0, Math.floor(ms / 1000));
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  };
+  function renderRec() {
+    const st = state.rec_state || 'idle';
+    const btn = $('recBtn');
+    btn.classList.toggle('on', st === 'recording');
+    btn.disabled = st === 'processing';
+    $('recLabel').textContent = st === 'recording' ? 'หยุดอัด' : 'เริ่มอัด';
+    if (st === 'recording') {
+      const since = state.rec_started_at ? Date.now() - new Date(state.rec_started_at).getTime() : 0;
+      $('recInfo').innerHTML = `<span style="color:#ff5a5a">●</span> กำลังอัด <b>${fmt(since)}</b> · ⭐ <b>${state.rec_highlights || 0}</b> ลูก`;
+    } else if (st === 'processing') {
+      $('recInfo').innerHTML = `มือถือกำลังใส่สกอร์และตัดไฮไลต์ <b>${state.rec_progress || 0}%</b>`;
+    } else {
+      $('recInfo').textContent = 'มือถือยังไม่ได้อัด';
+    }
+  }
+  setInterval(() => { if (state.rec_state === 'recording') renderRec(); }, 1000);
+
+  $('recBtn').addEventListener('click', async () => {
+    const action = state.rec_state === 'recording' ? 'stop' : 'start';
+    if (action === 'stop' && !confirm('หยุดอัด?')) return;
+    const before = state.rec_state;
+    await call('request_record', { p_game: GAME, p_action: action });
+    $('recInfo').textContent = action === 'start' ? 'กำลังสั่งมือถือเริ่มอัด...' : 'กำลังสั่งมือถือหยุดอัด...';
+    clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(() => {
+      if (state.rec_state === before) {
+        $('recInfo').textContent = 'มือถือไม่ตอบ ตรวจว่าเปิดแอป Courtside ค้างไว้และขึ้น "ซิงก์"';
+      }
+    }, 6000);
+  });
+
+  // ---------- ตั้งค่าสกอร์บอร์ด ----------
+  const COLORS = {
+    purple: ['#7c3aed', 'ม่วง'],
+    blue: ['#1e40af', 'น้ำเงิน'],
+    sky: ['#38bdf8', 'ฟ้า'],
+    green: ['#0f5132', 'เขียว'],
+    lime: ['#a3e635', 'มะนาว'],
+    red: ['#dc2626', 'แดง'],
+    orange: ['#f97316', 'ส้ม'],
+    yellow: ['#facc15', 'เหลือง'],
+    black: ['#1c1c1c', 'ดำ'],
+    white: ['#f5f5f5', 'ขาว'],
+  };
+  const ink = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return l > 0.6 ? '#0b0d10' : '#ffffff';
+  };
+  for (const side of ['home', 'away']) {
+    for (const [id, [hex, name]] of Object.entries(COLORS)) {
+      const btn = document.createElement('button');
+      btn.className = 'cbtn';
+      btn.dataset.side = side;
+      btn.dataset.color = id;
+      btn.style.background = hex;
+      btn.style.color = ink(hex);
+      btn.textContent = name;
+      btn.addEventListener('click', () => {
+        const home = side === 'home' ? id : (state.home_color || 'purple');
+        const away = side === 'away' ? id : (state.away_color || 'blue');
+        call('set_colors', { p_game: GAME, p_home_color: home, p_away_color: away });
+      });
+      $(side + 'Colors').appendChild(btn);
+    }
+  }
+  function renderSettings(row) {
+    const hc = row.home_color || 'purple';
+    const ac = row.away_color || 'blue';
+    const home = (COLORS[hc] || COLORS.purple)[0];
+    const away = (COLORS[ac] || COLORS.blue)[0];
+    const root = document.documentElement.style;
+    root.setProperty('--home', home === '#1c1c1c' ? '#3a3a3a' : home);
+    root.setProperty('--away', away === '#1c1c1c' ? '#3a3a3a' : away);
+    root.setProperty('--home-ink', ink(home));
+    root.setProperty('--away-ink', ink(away));
+    document.querySelectorAll('.cbtn').forEach((b) =>
+      b.classList.toggle('on', b.dataset.color === (b.dataset.side === 'home' ? hc : ac)));
+    $('limVal').textContent = row.foul_limit || 7;
+    if (document.activeElement !== $('dateIn')) $('dateIn').value = row.game_date || '';
+    $('tglIntro').classList.toggle('on', row.show_intro !== false);
+  }
+  function saveStyle(patch) {
+    const cur = {
+      theme: state.theme || 'M1',
+      foul_limit: state.foul_limit || 7,
+      game_date: state.game_date || '',
+      show_intro: state.show_intro !== false,
+      ...patch,
+    };
+    call('set_style', {
+      p_game: GAME, p_theme: cur.theme, p_foul_limit: cur.foul_limit,
+      p_game_date: cur.game_date, p_show_intro: cur.show_intro,
+    });
+  }
+  $('limMinus').addEventListener('click', () => saveStyle({ foul_limit: Math.max(1, (state.foul_limit || 7) - 1) }));
+  $('limPlus').addEventListener('click', () => saveStyle({ foul_limit: Math.min(15, (state.foul_limit || 7) + 1) }));
+  $('dateIn').addEventListener('change', () => saveStyle({ game_date: $('dateIn').value.trim() }));
+  $('tglIntro').addEventListener('click', () => saveStyle({ show_intro: state.show_intro === false }));
+
+  async function load() {
+    const { data, error } = await db.from('games').select('*').eq('id', GAME).maybeSingle();
+    if (error || !data) {
+      setStatus(false, 'ไม่พบเกม ตรวจลิงก์อีกครั้ง');
+      return;
+    }
+    render(data);
+  }
+
+  db.channel('game-' + GAME)
+    .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${GAME}` },
+        (payload) => render(payload.new))
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setStatus(true, 'เชื่อมต่อแล้ว');
+        load();
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        setStatus(false, 'หลุดการเชื่อมต่อ กำลังลองใหม่...');
+      }
+    });
+
+  // กลับมาที่หน้านี้หลังสลับแอป ให้ดึงสกอร์ล่าสุด
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') load();
+  });
+  load();
+</script>
+</body>
+</html>
